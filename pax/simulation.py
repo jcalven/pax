@@ -36,12 +36,14 @@ class Simulator(object):
         # Primary excimer fraction from Nest Version 098
         # See G4S1Light.cc line 298
         density = c['liquid_density'] / (units.g / units.cm ** 3)
-        excfrac = 0.4 - 0.11131 * density - 0.0026651 * density ** 2    # primary / secondary excimers
-        excfrac = 1 / (1 + excfrac)                                     # primary / all excimers
-        # primary / all excimers that produce a photon:
-        excfrac /= 1 - (1 - excfrac) * (1 - c['s1_ER_recombination_fraction'])
-        c['s1_ER_primary_excimer_fraction'] = excfrac
-        log.debug('Inferred s1_ER_primary_excimer_fraction %s' % excfrac)
+
+        if not c['s1_ER_primary_excimer_fraction']:
+            excfrac = 0.4 - 0.11131 * density - 0.0026651 * density ** 2    # primary / secondary excimers
+            excfrac = 1 / (1 + excfrac)                                     # primary / all excimers
+            # primary / all excimers that produce a photon:
+            excfrac /= 1 - (1 - excfrac) * (1 - c['s1_ER_recombination_fraction'])
+            c['s1_ER_primary_excimer_fraction'] = excfrac
+        log.debug('Inferred s1_ER_primary_excimer_fraction %s' % c['s1_ER_primary_excimer_fraction'])
 
         # Recombination time from NEST 2014
         # 3.5 seems fishy, they fit an exponential to data, but in the code they use a non-exponential distribution...
