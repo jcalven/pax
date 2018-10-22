@@ -195,11 +195,11 @@ class TableWriter(plugin.OutputPlugin):
         :param m: instance to convert
         :param index_fields: list of (index_field_name, value) tuples denoting multi-index trail
         """
-
         # List to contain data from this model, will be made into tuple later
         m_name = m.__class__.__name__
         m_indices = [x[1] for x in index_fields]
         m_data = []
+
         # Have we seen this model before? If not, initialize stuff
         first_time_seen = False
         if m_name not in self.data:
@@ -213,13 +213,14 @@ class TableWriter(plugin.OutputPlugin):
             }
             first_time_seen = True
 
-        for i, (field_name, field_value) in enumerate(m.get_fields_data()):
+        for field_name, field_value in m.get_fields_data():
 
             if field_name in self.config['fields_to_ignore']:
                 continue
 
             if field_name is "sum_waveforms":
                 # Hack to prepare SumWaveform object data to be stored as hdf5
+
                 field_value_tmp = []
 
                 def _set_attr(old_obj, new_obj):
@@ -266,6 +267,7 @@ class TableWriter(plugin.OutputPlugin):
                 # This is a model collection field.
                 # Get its type (can't get from the list itself, could be empty)
                 child_class_name = m.get_list_field_info()[field_name]
+
                 # Store the absolute start index & number of children
                 child_start = self.get_index_of(child_class_name)
                 n_children = len(field_value)
@@ -321,6 +323,7 @@ class TableWriter(plugin.OutputPlugin):
                         'index_depth':     len(m_indices),
                     }
                 self.data[field_name]['tuples'].append(tuple(m_indices + field_value.tolist()))
+
             else:
                 m_data.append(field_value)
                 if first_time_seen:
@@ -328,6 +331,7 @@ class TableWriter(plugin.OutputPlugin):
                     self.data[m_name]['dtype'].append(self._numpy_field_dtype(field_name,
                                                                               field_value))
 
+        # Store m_indices + m_data in self.data['tuples']
         self.data[m_name]['tuples'].append(tuple(m_indices + m_data))
 
     def _numpy_field_dtype(self, name, x):
