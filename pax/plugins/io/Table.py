@@ -195,11 +195,11 @@ class TableWriter(plugin.OutputPlugin):
         :param m: instance to convert
         :param index_fields: list of (index_field_name, value) tuples denoting multi-index trail
         """
+
         # List to contain data from this model, will be made into tuple later
         m_name = m.__class__.__name__
         m_indices = [x[1] for x in index_fields]
         m_data = []
-
         # Have we seen this model before? If not, initialize stuff
         first_time_seen = False
         if m_name not in self.data:
@@ -213,16 +213,59 @@ class TableWriter(plugin.OutputPlugin):
             }
             first_time_seen = True
 
-        for field_name, field_value in m.get_fields_data():
+        for i, (field_name, field_value) in enumerate(m.get_fields_data()):
 
             if field_name in self.config['fields_to_ignore']:
                 continue
+
+            if field_name is "sum_waveforms":
+                # Hack to prepare SumWaveform object data to be stored as hdf5
+                field_value_tmp = []
+
+                def _set_attr(old_obj, new_obj):
+                    """
+                    Set attributes from SumWaveform instance onto
+                    new instance of metaclass SumWaveform_x and
+                    its subclass.
+                    """
+
+                    # Constant WaveForm array size
+                    const_array_size = 250000
+                    # Fields to make constant
+                    fields_to_extend = ['samples']
+                    attr = old_obj.__dict__
+                    for key, val in attr.items():
+                        if key in fields_to_extend:
+                            extend_with = const_array_size - len(val)
+                            if extend_with > 0:
+                                val = np.pad(val, (0,extend_with), 'constant', constant_values=np.nan)
+                        setattr(new_obj, key, val)
+                        # This is needed for get_fields_data() to work properly
+                        # for the new metaclass
+                        setattr(new_obj.__class__, key, None)
+                    return new_obj
+
+                def _set_class(class_name, old_obj):
+                    """
+                    Create metaclass from SumWaveform instance with all
+                    attributes set to those of the SumWaveform instance.
+                    """
+                    metaClass = type(class_name, (type(old_obj),), {})
+                    new_obj = _set_attr(old_obj, metaClass())
+                    return new_obj
+
+                # Iterate over SumWaveform objects in field_value
+                # and replace field_value with instances of the metaclass
+                for m_sw in field_value:
+                    new_name = type(m_sw).__name__ + '_%s' % m_sw.name
+                    m_sw_tmp = _set_class(new_name, m_sw)
+                    field_value_tmp.append(m_sw_tmp)
+                field_value = field_value_tmp
 
             if isinstance(field_value, list):
                 # This is a model collection field.
                 # Get its type (can't get from the list itself, could be empty)
                 child_class_name = m.get_list_field_info()[field_name]
-
                 # Store the absolute start index & number of children
                 child_start = self.get_index_of(child_class_name)
                 n_children = len(field_value)
@@ -278,7 +321,6 @@ class TableWriter(plugin.OutputPlugin):
                         'index_depth':     len(m_indices),
                     }
                 self.data[field_name]['tuples'].append(tuple(m_indices + field_value.tolist()))
-
             else:
                 m_data.append(field_value)
                 if first_time_seen:
@@ -286,7 +328,6 @@ class TableWriter(plugin.OutputPlugin):
                     self.data[m_name]['dtype'].append(self._numpy_field_dtype(field_name,
                                                                               field_value))
 
-        # Store m_indices + m_data in self.data['tuples']
         self.data[m_name]['tuples'].append(tuple(m_indices + m_data))
 
     def _numpy_field_dtype(self, name, x):
