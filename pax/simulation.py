@@ -571,6 +571,32 @@ class Simulator(object):
     def s1_photons(self, n_photons, recoil_type, x=0., y=0., z=0, t=0.):
         """Returns a list of photon detection times at the PMT caused by an S1 emitting n_photons.
         """
+        def photons_to_energy(n_photons, recoil_type):
+            """ Converts number of photons to energy in keV """
+            # Extracted function parameters from fit to generated instructions
+            # files
+            coeffs = dict(er = np.array([-5.23252860e-62, 6.45108795e-56, -3.54786956e-50,
+                               1.14814631e-44, -2.42850443e-39, 3.52642044e-34,
+                               -3.59306037e-29, 2.57937744e-24, -1.29031192e-19,
+                               4.37259295e-15, -9.50734591e-11, 1.19058381e-06,
+                               2.04654035e-02, -5.21252239e-01]),
+                          nr = np.array([ -5.91431590e-63, 8.28438242e-57, -5.16990505e-51,
+                                         1.89578822e-45, -4.53654475e-40, 7.43954693e-35,
+                                         -8.54369772e-30, 6.89800601e-25, -3.87197875e-20,
+                                         1.46901008e-15, -3.56910123e-11, 4.98809896e-07,
+                                         2.03881552e-02, -3.94100700e-01]))
+            p = np.poly1d(coeffs[recoil_type])
+            return p(n_photons)
+
+        def exp_func(energy, recoil_type):
+            """ Calculates ER and NR singlet fractions """
+            # Extracted function parameters from fit to generated instructions
+            # files
+            coeffs = dict(er = (-0.16501115, 0.14781087, 0.24956972),
+                          nr = (0.33020282, 0.02205178, 0.79736667))
+            c = coeffs[recoil_type]
+            return c[0] * -np.exp(-c[1] * energy) + c[2]
+
         # Apply light yield / detection efficiency
         log.debug("Creating an s1 from %s photons..." % n_photons)
         ly = self.s1_light_yield_map.get_value(x, y, z) * self.config['s1_detection_efficiency']
@@ -602,11 +628,18 @@ class Simulator(object):
             # How many of these are primary excimers? Others arise through recombination.
             n_primaries = np.random.binomial(n=n_photons, p=self.config['s1_ER_primary_excimer_fraction'])
 
+            if self.config['s1_ER_primary_singlet_fraction'] is None:
+                energy = photons_to_energy(n_primaries, 'er')
+                s1_ER_primary_singlet_fraction = exp_func(energy, 'er')
+            else:
+                s1_ER_primary_singlet_fraction = self.config['s1_ER_primary_singlet_fraction']
+
             primary_timings = self.singlet_triplet_delays(
                 np.zeros(n_primaries),  # No recombination delay for primary excimers
                 t1=self.config['singlet_lifetime_liquid'],
                 t3=self.config['triplet_lifetime_liquid'],
-                singlet_ratio=self.config['s1_ER_primary_singlet_fraction']
+                singlet_ratio=s1_ER_primary_singlet_fraction
+                #singlet_ratio=self.config['s1_ER_primary_singlet_fraction']
             )
 
             # Correct for the recombination time
@@ -615,12 +648,21 @@ class Simulator(object):
             secondary_timings = self.config['s1_ER_recombination_time']\
                 * (-1 + 1 / np.random.uniform(0, 1, n_photons - n_primaries))
             secondary_timings = np.clip(secondary_timings, 0, self.config['maximum_recombination_time'])
+
+            # Calculate singlet fraction if none given
+            if self.config['s1_ER_secondary_singlet_fraction'] is None:
+                energy = photons_to_energy(len(secondary_timings), 'er')
+                s1_ER_secondary_singlet_fraction = exp_func(energy, 'er')
+            else:
+                s1_ER_secondary_singlet_fraction = self.config['s1_ER_secondary_singlet_fraction']
+
             # Handle singlet/ triplet decays as before
             secondary_timings += self.singlet_triplet_delays(
                 secondary_timings,
                 t1=self.config['singlet_lifetime_liquid'],
                 t3=self.config['triplet_lifetime_liquid'],
-                singlet_ratio=self.config['s1_ER_secondary_singlet_fraction']
+                singlet_ratio=s1_ER_secondary_singlet_fraction
+                #singlet_ratio=self.config['s1_ER_secondary_singlet_fraction']
             )
 
             timings = np.concatenate((primary_timings, secondary_timings))
@@ -628,6 +670,14 @@ class Simulator(object):
         elif recoil_type.lower() == 'nr':
             # Neglible recombination time, same singlet/triplet ratio for primary & secondary excimers
             # Hence, we don't care about primary & secondary excimers at all:
+
+            # Calculate singlet fraction if none given
+            if self.config['s1_NR_singlet_fraction'] is None:
+                energy = photons_to_energy(len(secondary_timings), 'nr')
+                s1_NR_singlet_fraction = exp_func(energy, 'nr')
+            else:
+                s1_NR_singlet_fraction = self.config['s1_NR_singlet_fraction']
+
             timings = self.singlet_triplet_delays(
                 np.zeros(n_photons),
                 t1=self.config['singlet_lifetime_liquid'],
