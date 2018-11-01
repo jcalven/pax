@@ -575,16 +575,28 @@ class Simulator(object):
             """ Converts number of photons to energy in keV """
             # Extracted function parameters from fit to generated instructions
             # files
-            coeffs = dict(er = np.array([-5.23252860e-62, 6.45108795e-56, -3.54786956e-50,
-                               1.14814631e-44, -2.42850443e-39, 3.52642044e-34,
-                               -3.59306037e-29, 2.57937744e-24, -1.29031192e-19,
-                               4.37259295e-15, -9.50734591e-11, 1.19058381e-06,
-                               2.04654035e-02, -5.21252239e-01]),
-                          nr = np.array([ -5.91431590e-63, 8.28438242e-57, -5.16990505e-51,
-                                         1.89578822e-45, -4.53654475e-40, 7.43954693e-35,
-                                         -8.54369772e-30, 6.89800601e-25, -3.87197875e-20,
-                                         1.46901008e-15, -3.56910123e-11, 4.98809896e-07,
-                                         2.03881552e-02, -3.94100700e-01]))
+            # coeffs = dict(er = np.array([-5.23252860e-62, 6.45108795e-56, -3.54786956e-50,
+            #                    1.14814631e-44, -2.42850443e-39, 3.52642044e-34,
+            #                    -3.59306037e-29, 2.57937744e-24, -1.29031192e-19,
+            #                    4.37259295e-15, -9.50734591e-11, 1.19058381e-06,
+            #                    2.04654035e-02, -5.21252239e-01]),
+            #               nr = np.array([ -5.91431590e-63, 8.28438242e-57, -5.16990505e-51,
+            #                              1.89578822e-45, -4.53654475e-40, 7.43954693e-35,
+            #                              -8.54369772e-30, 6.89800601e-25, -3.87197875e-20,
+            #                              1.46901008e-15, -3.56910123e-11, 4.98809896e-07,
+            #                              2.03881552e-02, -3.94100700e-01]))
+
+            coeffs = dict(er = np.array([-4.89052421e-50, 7.23532446e-45, -4.77500619e-40,
+                                         1.85432039e-35,  -4.70660428e-31,   8.20132688e-27,
+                                         -1.00275721e-22,   8.63828289e-19,  -5.18547422e-15,
+                                         2.10869645e-11,  -5.50193630e-08,   8.26794314e-05,
+                                         1.70545029e-01,  -5.21252200e-01]),
+                          nr = np.array([ -5.52774902e-51,   9.29148613e-46,  -6.95807103e-41,
+                                         3.06180380e-36,  -8.79212759e-32,   1.73020083e-27,
+                                         -2.38438922e-23,   2.31012824e-19,  -1.55606141e-15,
+                                         7.08434640e-12,  -2.06545209e-08,   3.46395760e-05,
+                                         1.69901293e-01,  -3.94100687e-01]))
+
             p = np.poly1d(coeffs[recoil_type])
             return p(n_photons)
 
@@ -634,6 +646,11 @@ class Simulator(object):
             else:
                 s1_ER_primary_singlet_fraction = self.config['s1_ER_primary_singlet_fraction']
 
+            print("n_photons: ", n_photons)
+            print("n_primaries: ", n_primaries)
+            print("ER primary singlet fraction:", s1_ER_primary_singlet_fraction)
+            print("Primary energy:", energy)
+
             primary_timings = self.singlet_triplet_delays(
                 np.zeros(n_primaries),  # No recombination delay for primary excimers
                 t1=self.config['singlet_lifetime_liquid'],
@@ -655,6 +672,10 @@ class Simulator(object):
                 s1_ER_secondary_singlet_fraction = exp_func(energy, 'er')
             else:
                 s1_ER_secondary_singlet_fraction = self.config['s1_ER_secondary_singlet_fraction']
+
+            print("n_secondaries: ", len(secondary_timings))
+            print("ER secondary singlet fraction:", s1_ER_secondary_singlet_fraction)
+            print("Secondary energy:", energy)
 
             # Handle singlet/ triplet decays as before
             secondary_timings += self.singlet_triplet_delays(
