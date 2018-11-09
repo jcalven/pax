@@ -586,16 +586,29 @@ class Simulator(object):
             #                              1.46901008e-15, -3.56910123e-11, 4.98809896e-07,
             #                              2.03881552e-02, -3.94100700e-01]))
 
-            coeffs = dict(er = np.array([-4.89052421e-50, 7.23532446e-45, -4.77500619e-40,
-                                         1.85432039e-35,  -4.70660428e-31,   8.20132688e-27,
-                                         -1.00275721e-22,   8.63828289e-19,  -5.18547422e-15,
-                                         2.10869645e-11,  -5.50193630e-08,   8.26794314e-05,
-                                         1.70545029e-01,  -5.21252200e-01]),
-                          nr = np.array([ -5.52774902e-51,   9.29148613e-46,  -6.95807103e-41,
-                                         3.06180380e-36,  -8.79212759e-32,   1.73020083e-27,
-                                         -2.38438922e-23,   2.31012824e-19,  -1.55606141e-15,
-                                         7.08434640e-12,  -2.06545209e-08,   3.46395760e-05,
-                                         1.69901293e-01,  -3.94100687e-01]))
+
+            # coeffs = dict(er = np.array([-4.89052421e-50, 7.23532446e-45, -4.77500619e-40,
+            #                              1.85432039e-35,  -4.70660428e-31,   8.20132688e-27,
+            #                              -1.00275721e-22,   8.63828289e-19,  -5.18547422e-15,
+            #                              2.10869645e-11,  -5.50193630e-08,   8.26794314e-05,
+            #                              1.70545029e-01,  -5.21252200e-01]),
+            #               nr = np.array([ -5.52774902e-51,   9.29148613e-46,  -6.95807103e-41,
+            #                              3.06180380e-36,  -8.79212759e-32,   1.73020083e-27,
+            #                              -2.38438922e-23,   2.31012824e-19,  -1.55606141e-15,
+            #                              7.08434640e-12,  -2.06545209e-08,   3.46395760e-05,
+            #                              1.69901293e-01,  -3.94100687e-01]))
+
+            coeffs = dict(er = np.array([-2.26408070e-56,   9.66802776e-51,  -1.82912300e-45,
+         2.01860631e-40,  -1.43940089e-35,   6.93720761e-31,
+        -2.29468369e-26,   5.17358548e-22,  -7.69983290e-18,
+         7.00720887e-14,  -3.14134862e-10,  -3.99458102e-08,
+         2.30288422e-01,  -1.32673148e+01]),
+                          nr = np.array([ -3.11046934e-57,   1.52500772e-51,  -3.31159149e-46,
+         4.19390428e-41,  -3.43199412e-36,   1.89929810e-31,
+        -7.22546226e-27,   1.88068835e-22,  -3.26114433e-18,
+         3.54664410e-14,  -2.10046649e-10,   3.76285505e-07,
+         1.97057813e-01,  -6.63359263e+00]))
+
 
             p = np.poly1d(coeffs[recoil_type])
             return p(n_photons)
@@ -646,10 +659,10 @@ class Simulator(object):
             else:
                 s1_ER_primary_singlet_fraction = self.config['s1_ER_primary_singlet_fraction']
 
-            print("n_photons: ", n_photons)
-            print("n_primaries: ", n_primaries)
-            print("ER primary singlet fraction:", s1_ER_primary_singlet_fraction)
-            print("Primary energy:", energy)
+            # print("n_photons: ", n_photons)
+            # print("n_primaries: ", n_primaries)
+            # print("ER primary singlet fraction:", s1_ER_primary_singlet_fraction)
+            # print("Primary energy:", energy)
 
             primary_timings = self.singlet_triplet_delays(
                 np.zeros(n_primaries),  # No recombination delay for primary excimers
@@ -673,9 +686,9 @@ class Simulator(object):
             else:
                 s1_ER_secondary_singlet_fraction = self.config['s1_ER_secondary_singlet_fraction']
 
-            print("n_secondaries: ", len(secondary_timings))
-            print("ER secondary singlet fraction:", s1_ER_secondary_singlet_fraction)
-            print("Secondary energy:", energy)
+            # print("n_secondaries: ", len(secondary_timings))
+            # print("ER secondary singlet fraction:", s1_ER_secondary_singlet_fraction)
+            # print("Secondary energy:", energy)
 
             # Handle singlet/ triplet decays as before
             secondary_timings += self.singlet_triplet_delays(
@@ -683,7 +696,7 @@ class Simulator(object):
                 t1=self.config['singlet_lifetime_liquid'],
                 t3=self.config['triplet_lifetime_liquid'],
                 singlet_ratio=s1_ER_secondary_singlet_fraction
-                #singlet_ratio=self.config['s1_ER_secondary_singlet_fraction']
+                # singlet_ratio=self.config['s1_ER_secondary_singlet_fraction']
             )
 
             timings = np.concatenate((primary_timings, secondary_timings))
@@ -694,16 +707,21 @@ class Simulator(object):
 
             # Calculate singlet fraction if none given
             if self.config['s1_NR_singlet_fraction'] is None:
-                energy = photons_to_energy(len(secondary_timings), 'nr')
+                energy = photons_to_energy(n_photons, 'nr')
                 s1_NR_singlet_fraction = exp_func(energy, 'nr')
             else:
                 s1_NR_singlet_fraction = self.config['s1_NR_singlet_fraction']
 
+            # print("==============")
+            # print(n_photons)
+            # print(energy)
+            # print(s1_NR_singlet_fraction)
             timings = self.singlet_triplet_delays(
                 np.zeros(n_photons),
                 t1=self.config['singlet_lifetime_liquid'],
                 t3=self.config['triplet_lifetime_liquid'],
-                singlet_ratio=self.config['s1_NR_singlet_fraction']
+                singlet_ratio=s1_NR_singlet_fraction
+                # singlet_ratio=self.config['s1_NR_singlet_fraction']
             )
 
         else:
